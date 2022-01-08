@@ -54,7 +54,7 @@ fn main() -> Result<()> {
                 Ok(capture)
             }
             rdev::EventType::KeyRelease(key) => {
-                let key_code = keycode(key).ok_or(anyhow!("keycode"))?;
+                let key_code = keycode(key).ok_or(anyhow!("keycode {:?}", key))?;
                 // println!("KeyRelease: {}", key_code);
                 KEY_DEPRESSED.lock().unwrap().remove(&key_code);
                 Ok(false)
