@@ -3,7 +3,7 @@ use keycodes::keycode;
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
-use rdev::Key;
+use rdev::{Event, Key};
 use std::collections::{HashMap, HashSet};
 use std::process::Command;
 use std::sync::Mutex;
@@ -31,48 +31,51 @@ fn main() -> Result<()> {
             triggers.insert(keycode(key).ok_or(anyhow!("keycode"))?, **rule);
         }
     }
-    rdev::listen(move |event| {
-        report_err(|| {
-            match event.event_type {
-                rdev::EventType::KeyPress(key) => {
-                    let key_code = keycode(key).ok_or(anyhow!("keycode"))?;
-                    // println!("KeyPress: {}", key_code);
-                    KEY_DEPRESSED.lock().unwrap().insert(key_code);
-                    for rule in triggers.get(&key_code) {
-                        if rule.0.iter().all(|key| {
-                            KEY_DEPRESSED
-                                .lock()
-                                .unwrap()
-                                .get(&keycode(*key).ok_or(anyhow!("keycode")).unwrap())
-                                .is_some()
-                        }) {
-                            println!("focus {}", rule.1);
-                            focus(rule.1)?;
-                        }
+    rdev::grab(move |event| {
+        report_err(event, |event| match event.event_type {
+            rdev::EventType::KeyPress(key) => {
+                let key_code = keycode(key).ok_or(anyhow!("keycode"))?;
+                // println!("KeyPress: {}", key_code);
+                KEY_DEPRESSED.lock().unwrap().insert(key_code);
+                let mut capture = false;
+                for rule in triggers.get(&key_code) {
+                    if rule.0.iter().all(|key| {
+                        KEY_DEPRESSED
+                            .lock()
+                            .unwrap()
+                            .get(&keycode(*key).ok_or(anyhow!("keycode")).unwrap())
+                            .is_some()
+                    }) {
+                        println!("focus {}", rule.1);
+                        focus(rule.1)?;
+                        capture = true;
                     }
                 }
-                rdev::EventType::KeyRelease(key) => {
-                    let key_code = keycode(key).ok_or(anyhow!("keycode"))?;
-                    // println!("KeyRelease: {}", key_code);
-                    KEY_DEPRESSED.lock().unwrap().remove(&key_code);
-                }
-                _ => {}
+                Ok(capture)
             }
-            Ok(())
+            rdev::EventType::KeyRelease(key) => {
+                let key_code = keycode(key).ok_or(anyhow!("keycode"))?;
+                // println!("KeyRelease: {}", key_code);
+                KEY_DEPRESSED.lock().unwrap().remove(&key_code);
+                Ok(false)
+            }
+            _ => Ok(false),
         })
     })
     .map_err(|err| anyhow!("could not listen: {:?}", err))?;
     Ok(())
 }
 
-fn report_err<F>(f: F)
+fn report_err<F>(event: Event, f: F) -> Option<Event>
 where
-    F: FnOnce() -> Result<()>,
+    F: FnOnce(&Event) -> Result<bool>,
 {
-    match f() {
-        Ok(_) => {}
+    match f(&event) {
+        Ok(true) => None,
+        Ok(false) => Some(event),
         Err(err) => {
-            eprintln!("error {}", err)
+            eprintln!("error {}", err);
+            Some(event)
         }
     }
 }
