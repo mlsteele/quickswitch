@@ -3,24 +3,57 @@ use keycodes::keycode;
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
-use std::collections::HashSet;
+use rdev::Key;
+use std::collections::{HashMap, HashSet};
+use std::process::Command;
 use std::sync::Mutex;
+
+type Rule = ([Key; 3], &'static str);
+
 static KEY_DEPRESSED: Lazy<Mutex<HashSet<i32>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
 // Credit to https://github.com/kb24x7/rustyvibes
 
+const RULES: &[&Rule] = &[
+    &([Key::ShiftLeft, Key::MetaLeft, Key::KeyU], "iTerm"),
+    &(
+        [Key::ShiftLeft, Key::MetaLeft, Key::KeyI],
+        "Visual Studio Code",
+    ),
+    &([Key::ShiftLeft, Key::MetaLeft, Key::KeyO], "Firefox"),
+    &([Key::ShiftLeft, Key::MetaLeft, Key::KeyK], "Keybase"),
+];
+
 fn main() -> Result<()> {
-    rdev::listen(|event| {
+    let mut triggers: HashMap<i32, Rule> = HashMap::new();
+    for rule in RULES {
+        for key in rule.0 {
+            triggers.insert(keycode(key).ok_or(anyhow!("keycode"))?, **rule);
+        }
+    }
+    rdev::listen(move |event| {
         report_err(|| {
             match event.event_type {
                 rdev::EventType::KeyPress(key) => {
                     let key_code = keycode(key).ok_or(anyhow!("keycode"))?;
-                    println!("KeyPress: {}", key_code);
+                    // println!("KeyPress: {}", key_code);
                     KEY_DEPRESSED.lock().unwrap().insert(key_code);
+                    for rule in triggers.get(&key_code) {
+                        if rule.0.iter().all(|key| {
+                            KEY_DEPRESSED
+                                .lock()
+                                .unwrap()
+                                .get(&keycode(*key).ok_or(anyhow!("keycode")).unwrap())
+                                .is_some()
+                        }) {
+                            println!("focus {}", rule.1);
+                            focus(rule.1)?;
+                        }
+                    }
                 }
                 rdev::EventType::KeyRelease(key) => {
                     let key_code = keycode(key).ok_or(anyhow!("keycode"))?;
-                    println!("KeyRelease: {}", key_code);
+                    // println!("KeyRelease: {}", key_code);
                     KEY_DEPRESSED.lock().unwrap().remove(&key_code);
                 }
                 _ => {}
@@ -41,5 +74,18 @@ where
         Err(err) => {
             eprintln!("error {}", err)
         }
+    }
+}
+
+/// Executes the script and passes the provided arguments.
+fn focus(app: &str) -> Result<()> {
+    let output = Command::new("osascript")
+        .arg("-e")
+        .arg(format!("tell application \"{}\" to activate", app))
+        .output()?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(anyhow!("osascript: {}", String::from_utf8(output.stderr)?))
     }
 }
