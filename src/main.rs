@@ -28,13 +28,13 @@ fn main() -> Result<()> {
     let mut triggers: HashMap<i32, Rule> = HashMap::new();
     for rule in RULES {
         for key in rule.0 {
-            triggers.insert(keycode(key).ok_or(anyhow!("keycode"))?, **rule);
+            triggers.insert(keycode(key).ok_or(anyhow!("keycode {:?}", key))?, **rule);
         }
     }
     rdev::grab(move |event| {
         report_err(event, |event| match event.event_type {
             rdev::EventType::KeyPress(key) => {
-                let key_code = keycode(key).ok_or(anyhow!("keycode"))?;
+                let key_code = keycode(key).ok_or(anyhow!("keycode: {:?}", key))?;
                 // println!("KeyPress: {}", key_code);
                 KEY_DEPRESSED.lock().unwrap().insert(key_code);
                 let mut capture = false;
