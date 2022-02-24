@@ -5,7 +5,7 @@ use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
 use rdev::{Event, Key};
 use std::collections::{HashMap, HashSet};
-use std::process::Command;
+use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 
 type Rule = ([Key; 3], &'static str);
@@ -31,6 +31,9 @@ fn main() -> Result<()> {
             triggers.insert(keycode(key).ok_or(anyhow!("keycode {:?}", key))?, **rule);
         }
     }
+    let mut osascript = OsaScript::new();
+    osascript.start()?;
+    let x = Mutex::new(osascript);
     rdev::grab(move |event| {
         report_err(event, |event| match event.event_type {
             rdev::EventType::KeyPress(key) => {
@@ -47,7 +50,7 @@ fn main() -> Result<()> {
                             .is_some()
                     }) {
                         println!("focus {}", rule.1);
-                        focus(rule.1)?;
+                        x.lock().unwrap().focus(rule.1)?;
                         capture = true;
                     }
                 }
@@ -80,15 +83,38 @@ where
     }
 }
 
-/// Executes the script and passes the provided arguments.
-fn focus(app: &str) -> Result<()> {
-    let output = Command::new("osascript")
-        .arg("-e")
-        .arg(format!("tell application \"{}\" to activate", app))
-        .output()?;
-    if output.status.success() {
+struct OsaScript {
+    proc: Option<Child>,
+}
+
+impl OsaScript {
+    pub fn new() -> Self {
+        OsaScript { proc: None }
+    }
+
+    pub fn start(&mut self) -> Result<()> {
+        self.proc = Some(Self::spawn()?);
         Ok(())
-    } else {
-        Err(anyhow!("osascript: {}", String::from_utf8(output.stderr)?))
+    }
+
+    fn spawn() -> Result<Child> {
+        Ok(Command::new("osascript").stdin(Stdio::piped()).spawn()?)
+    }
+
+    pub fn focus(&mut self, app: &str) -> Result<()> {
+        use std::io::Write;
+        let mut child: Child = self.proc.take().expect("child must exist");
+        self.proc = Some(Self::spawn()?);
+        writeln!(
+            child.stdin.take().expect("child stdin must exist"),
+            "tell application \"{}\" to activate",
+            app
+        )?;
+        let output = child.wait_with_output()?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(anyhow!("osascript: {}", String::from_utf8(output.stderr)?))
+        }
     }
 }
