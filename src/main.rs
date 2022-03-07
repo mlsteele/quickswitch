@@ -52,7 +52,7 @@ fn main() -> Result<()> {
                 KEY_DEPRESSED.lock().unwrap().insert(key_code);
                 let mut capture = false;
                 for rule in rules.lock().unwrap().iter_mut() {
-                    if rule.change(&KEY_DEPRESSED.lock().unwrap()) {
+                    if rule.change(event, &KEY_DEPRESSED.lock().unwrap()) {
                         println!("focus {}", rule.focus());
                         osascript.lock().unwrap().focus(&rule.focus())?;
                         capture = true;
