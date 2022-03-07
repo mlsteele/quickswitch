@@ -1,7 +1,7 @@
 mod keycodes;
 mod rule;
 use keycodes::keycode;
-use rule::{Rule, SimpleRule};
+use rule::{Rule, SimpleRule, TwoStepRule};
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
@@ -15,14 +15,28 @@ static KEY_DEPRESSED: Lazy<Mutex<HashSet<i32>>> = Lazy::new(|| Mutex::new(HashSe
 // Credit to https://github.com/kb24x7/rustyvibes
 
 fn main() -> Result<()> {
-    let rules = vec![
-        SimpleRule::new(vec![Key::ShiftLeft, Key::MetaLeft, Key::KeyU], "iTerm")?,
-        SimpleRule::new(
+    let rules: Vec<Box<dyn Rule>> = vec![
+        Box::new(SimpleRule::new(
+            vec![Key::ShiftLeft, Key::MetaLeft, Key::KeyU],
+            "iTerm",
+        )?),
+        Box::new(SimpleRule::new(
             vec![Key::ShiftLeft, Key::MetaLeft, Key::KeyI],
             "Visual Studio Code",
-        )?,
-        SimpleRule::new(vec![Key::ShiftLeft, Key::MetaLeft, Key::KeyO], "Firefox")?,
-        SimpleRule::new(vec![Key::ShiftLeft, Key::MetaLeft, Key::KeyK], "Keybase")?,
+        )?),
+        Box::new(SimpleRule::new(
+            vec![Key::ShiftLeft, Key::MetaLeft, Key::KeyO],
+            "Firefox",
+        )?),
+        Box::new(SimpleRule::new(
+            vec![Key::ShiftLeft, Key::MetaLeft, Key::KeyK],
+            "Keybase",
+        )?),
+        Box::new(TwoStepRule::new(
+            vec![Key::ShiftLeft, Key::MetaLeft],
+            vec![Key::KeyN],
+            "Notion",
+        )?),
     ];
     let rules = Mutex::new(rules);
 
@@ -37,7 +51,7 @@ fn main() -> Result<()> {
                 // println!("KeyPress: {}", key_code);
                 KEY_DEPRESSED.lock().unwrap().insert(key_code);
                 let mut capture = false;
-                for rule in rules.lock().unwrap().iter() {
+                for rule in rules.lock().unwrap().iter_mut() {
                     if rule.change(&KEY_DEPRESSED.lock().unwrap()) {
                         println!("focus {}", rule.focus());
                         osascript.lock().unwrap().focus(&rule.focus())?;
