@@ -165,6 +165,8 @@ pub fn keycode(key: Key) -> Option<i32> {
         Key::Dot => Some(DOT),
         Key::Slash => Some(SLASH),
         Key::Function => Some(FUNCTION),
+        // Caps lock acting as control.
+        Key::Unknown(62) => Some(CONTROL_LEFT),
         _ => None,
     }
 }
