@@ -37,6 +37,11 @@ fn main() -> Result<()> {
             vec![Key::KeyN],
             "Notion",
         )?),
+        Box::new(TwoStepRule::new(
+            vec![Key::ShiftLeft, Key::MetaLeft],
+            vec![Key::KeyS],
+            "Spotify",
+        )?),
     ];
     let rules = Mutex::new(rules);
 
