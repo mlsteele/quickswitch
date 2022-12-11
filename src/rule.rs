@@ -11,7 +11,7 @@ pub trait Rule {
 }
 
 pub struct SimpleRule {
-    keys: Vec<i32>,
+    pub keys: Vec<i32>,
     focus: String,
 }
 
@@ -25,8 +25,21 @@ impl SimpleRule {
 }
 
 impl Rule for SimpleRule {
-    fn change(&mut self, _event: &Event, state: &HashSet<i32>) -> bool {
-        self.keys.iter().all(|key| state.get(key).is_some())
+    fn change(&mut self, event: &Event, state: &HashSet<i32>) -> bool {
+        self.keys.iter().all(|key| state.get(key).is_some()) && {
+            // The event is a keypress for the final key in this rule.
+            match event.event_type {
+                rdev::EventType::KeyPress(key) => {
+                    let last_key = self.keys.last().unwrap();
+                    if let Ok(key) = key_to_code(key) {
+                        key == *last_key
+                    } else {
+                        false
+                    }
+                }
+                _ => false,
+            }
+        }
     }
     fn focus(&self) -> &str {
         &self.focus
@@ -80,4 +93,8 @@ fn keys_to_codes(keys: &Vec<Key>) -> Result<Vec<i32>> {
     keys.iter()
         .map(|key| keycode(*key).ok_or(anyhow!("rule keycode {:?}", key)))
         .collect::<Result<_>>()
+}
+
+fn key_to_code(key: Key) -> Result<i32> {
+    keycode(key).ok_or(anyhow!("rule keycode {:?}", key))
 }
