@@ -14,7 +14,7 @@ use std::time::Duration;
 
 static KEY_DEPRESSED: Lazy<Mutex<HashSet<i32>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
-// Whether to keys pressed values.
+// Whether to log all key events.
 static DEBUG_LOG: bool = false;
 
 // Credit to https://github.com/kb24x7/rustyvibes
