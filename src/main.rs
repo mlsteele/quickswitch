@@ -53,6 +53,7 @@ fn main() -> Result<()> {
         )?),
     ];
     let rules = Mutex::new(rules);
+    let lifetime_count = Mutex::new(0); // last crapped out at 5363, 61479, 1178, 26883
 
     let mut osascript = OsaScript::new();
     osascript.start()?;
@@ -62,10 +63,12 @@ fn main() -> Result<()> {
         report_err(event, |event| match event.event_type {
             rdev::EventType::KeyPress(key) => {
                 let key_code = keycode(key).ok_or(anyhow!("keycode press: {:?}", key))?;
+                let mut lifetime_count = lifetime_count.lock().unwrap();
+                *lifetime_count += 1;
                 if DEBUG_LOG {
-                    println!("KeyPress: {}", key_code);
+                    println!("[{}] KeyPress: {}", lifetime_count, key_code);
                 } else {
-                    println!("KeyPress");
+                    println!("[{}] KeyPress", lifetime_count);
                 }
                 {
                     let mut m = KEY_DEPRESSED.lock().unwrap();
@@ -93,10 +96,12 @@ fn main() -> Result<()> {
             }
             rdev::EventType::KeyRelease(key) => {
                 let key_code = keycode(key).ok_or(anyhow!("keycode release {:?}", key))?;
+                let mut lifetime_count = lifetime_count.lock().unwrap();
+                *lifetime_count += 1;
                 if DEBUG_LOG {
-                    println!("KeyRelease: {}", key_code);
+                    println!("[{}] KeyRelease: {}", lifetime_count, key_code);
                 } else {
-                    println!("KeyRelease");
+                    println!("[{}] KeyRelease", lifetime_count);
                 }
                 {
                     let mut m = KEY_DEPRESSED.lock().unwrap();
