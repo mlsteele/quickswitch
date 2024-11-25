@@ -34,6 +34,10 @@ fn main() -> Result<()> {
             "Firefox",
         )?),
         Box::new(SimpleRule::new(
+            vec![Key::ShiftLeft, Key::MetaLeft, Key::KeyE],
+            "Google Chrome",
+        )?),
+        Box::new(SimpleRule::new(
             vec![Key::ShiftLeft, Key::MetaLeft, Key::KeyK],
             "Keybase",
         )?),
