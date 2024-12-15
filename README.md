@@ -14,6 +14,8 @@ sudo chmod 666 /var/log/quickswitch.err.log /var/log/quickswitch.log
 launchctl load -w launchd.plist
 launchctl list | grep quickswitch
 launchctl start com.milessteele.quickswitch
+# logs available here:
+tail -F -n +1 /var/log/quickswitch.*
 ```
 
 Add quickswitch as as able app in Settings > Privacy & Security > Accessibility.

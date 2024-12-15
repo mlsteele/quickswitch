@@ -6,8 +6,8 @@
         <string>com.milessteele.quickswitch</string>
         <key>Program</key>
         <string>/opt/quickswitch</string>
-        <key>StandardOutPath</key>
-        <string>/var/log/quickswitch.log</string>
+        <!-- <key>StandardOutPath</key>
+        <string>/var/log/quickswitch.log</string> -->
         <key>StandardErrorPath</key>
         <string>/var/log/quickswitch.err.log</string>
         <key>RunAtLoad</key>
