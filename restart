@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+launchctl stop com.milessteele.quickswitch ;\
+sleep 0.5 ;\
+sudo touch /var/log/quickswitch.log /var/log/quickswitch.err.log &&\
+sudo chmod 666 /var/log/quickswitch.err.log /var/log/quickswitch.log &&\
+sleep 0.5 ;\
+launchctl load -w launchd.plist ;\
+sleep 0.5 ;\
+sleep 0.5 ;\
+launchctl start com.milessteele.quickswitch ;\
+sleep 0.1
+pgrep quickswitch
+launchctl list | grep quickswitch

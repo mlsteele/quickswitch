@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+launchctl stop com.milessteele.quickswitch && launchctl start com.milessteele.quickswitch
